@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv5 Object Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>YOLOv5 Object Detection</h1>
+    <p>Real-time object detection using your webcam.</p>
+    <video id="webcam" autoplay playsinline width="640" height="480"></video>
+    <canvas id="output" width="640" height="480"></canvas>
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('output');
+        const ctx = canvas.getContext('2d');
+
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true
+            });
+            video.srcObject = stream;
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    resolve(video);
+                };
+            });
+        }
+
+        async function loadModel() {
+            const model = await cocoSsd.load();
+            return model;
+        }
+
+        async function detectObjects(model) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const predictions = await model.detect(video);
+            predictions.forEach(prediction => {
+                const [x, y, width, height] = prediction.bbox;
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, width, height);
+
+                ctx.fillStyle = 'green';
+                ctx.font = '16px Arial';
+                ctx.fillText(
+                    `${prediction.class} (${(prediction.score * 100).toFixed(1)}%)`,
+                    x,
+                    y > 10 ? y - 5 : 10
+                );
+            });
+
+            requestAnimationFrame(() => detectObjects(model));
+        }
+
+        async function main() {
+            await setupCamera();
+            video.play();
+
+            const model = await loadModel();
+            detectObjects(model);
+        }
+
+        main();
+    </script>
+</body>
+</html>
